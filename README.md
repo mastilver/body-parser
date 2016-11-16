@@ -1,6 +1,4 @@
-# jsan-body-parser
-
-[![Build Status][travis-image]][travis-url]
+# jsan-body-parser [![Build Status](https://travis-ci.org/mastilver/jsan-body-parser.svg?branch=master)](https://travis-ci.org/mastilver/jsan-body-parser)
 
 Node.js body parsing middleware for [jsan](https://github.com/kolodny/jsan).
 
@@ -206,5 +204,3 @@ app.use(jsanBodyParser({ type: 'application/json' }))
 ## License
 
 [MIT](LICENSE)
-
-[travis-url]: https://travis-ci.org/mastilver/jsan-body-parser
