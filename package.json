@@ -1,13 +1,14 @@
 {
-  "name": "body-parser",
+  "name": "jsan-body-parser",
   "description": "Node.js body parsing middleware",
-  "version": "1.15.2",
+  "version": "1.0.0",
   "contributors": [
     "Douglas Christopher Wilson <doug@somethingdoug.com>",
-    "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)"
+    "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)",
+    "Thomas Sileghem <th.sileghem@gmail.com>"
   ],
   "license": "MIT",
-  "repository": "expressjs/body-parser",
+  "repository": "mastilver/jsan-body-parser",
   "dependencies": {
     "bytes": "2.4.0",
     "content-type": "~1.0.2",
@@ -15,6 +16,7 @@
     "depd": "~1.1.0",
     "http-errors": "~1.5.0",
     "iconv-lite": "0.4.13",
+    "jsan": "^3.1.3",
     "on-finished": "~2.3.0",
     "qs": "6.2.0",
     "raw-body": "~2.1.7",

@@ -2,22 +2,44 @@
 var assert = require('assert')
 var http = require('http')
 var request = require('supertest')
+var jsan = require('jsan')
 
-var bodyParser = require('..')
+var jsanBodyParser = require('..')
 
-describe('bodyParser.json()', function () {
-  it('should parse JSON', function (done) {
+describe('jsanBodyParser()', function () {
+  it('should parse jsan', function (done) {
     request(createServer())
     .post('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .send('{"user":"tobi"}')
     .expect(200, '{"user":"tobi"}', done)
+  })
+
+  it('should parse jsan types', function (done) {
+    var jsanParser = jsanBodyParser()
+    var server = createServer(function (req, res, next) {
+      jsanParser(req, res, function (err) {
+        if (err) return next(err)
+
+        assert.equal(req.body.self, req.body)
+        assert.equal(req.body.sub.subSelf, req.body.sub)
+        assert.deepEqual(req.body.now, new Date(2015, 0, 1, 5))
+
+        next()
+      })
+    })
+
+    request(server)
+    .post('/')
+    .set('Content-Type', 'application/jsan')
+    .send('{"self":{"$jsan":"$"},"sub":{"subSelf":{"$jsan":"$.sub"}},"now":{"$jsan":"d1420088400000"}}')
+    .expect(200, done)
   })
 
   it('should fail gracefully', function (done) {
     request(createServer())
     .post('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .send('{"user"')
     .expect(400, /unexpected end/i, done)
   })
@@ -25,7 +47,7 @@ describe('bodyParser.json()', function () {
   it('should handle Content-Length: 0', function (done) {
     request(createServer())
     .get('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .set('Content-Length', '0')
     .expect(200, '{}', done)
   })
@@ -33,7 +55,7 @@ describe('bodyParser.json()', function () {
   it('should handle empty message-body', function (done) {
     request(createServer())
     .get('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .set('Transfer-Encoding', 'chunked')
     .expect(200, '{}', done)
   })
@@ -41,45 +63,45 @@ describe('bodyParser.json()', function () {
   it('should handle no message-body', function (done) {
     request(createServer())
     .get('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .unset('Transfer-Encoding')
     .expect(200, '{}', done)
   })
 
-  it('should 400 on malformed JSON', function (done) {
+  it('should 400 on malformed jsan', function (done) {
     request(createServer())
     .post('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .send('{:')
     .expect(400, /unexpected token/i, done)
   })
 
   it('should 400 when invalid content-length', function (done) {
-    var jsonParser = bodyParser.json()
+    var jsanParser = jsanBodyParser()
     var server = createServer(function (req, res, next) {
       req.headers['content-length'] = '20' // bad length
-      jsonParser(req, res, next)
+      jsanParser(req, res, next)
     })
 
     request(server)
     .post('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .send('{"str":')
     .expect(400, /content length/, done)
   })
 
   it('should handle duplicated middleware', function (done) {
-    var jsonParser = bodyParser.json()
+    var jsanParser = jsanBodyParser()
     var server = createServer(function (req, res, next) {
-      jsonParser(req, res, function (err) {
+      jsanParser(req, res, function (err) {
         if (err) return next(err)
-        jsonParser(req, res, next)
+        jsanParser(req, res, next)
       })
     })
 
     request(server)
     .post('/')
-    .set('Content-Type', 'application/json')
+    .set('Content-Type', 'application/jsan')
     .send('{"user":"tobi"}')
     .expect(200, '{"user":"tobi"}', done)
   })
@@ -88,7 +110,7 @@ describe('bodyParser.json()', function () {
     it('should parse primitives', function (done) {
       request(createServer({ strict: false }))
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('true')
       .expect(200, 'true', done)
     })
@@ -103,15 +125,15 @@ describe('bodyParser.json()', function () {
     it('should not parse primitives', function (done) {
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('true')
       .expect(400, /unexpected token/i, done)
     })
 
-    it('should allow leading whitespaces in JSON', function (done) {
+    it('should allow leading whitespaces in jsan', function (done) {
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('   { "user": "tobi" }')
       .expect(200, '{"user":"tobi"}', done)
     })
@@ -121,7 +143,7 @@ describe('bodyParser.json()', function () {
     it('should 400 on primitives', function (done) {
       request(createServer())
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('true')
       .expect(400, /unexpected token/i, done)
     })
@@ -132,9 +154,9 @@ describe('bodyParser.json()', function () {
       var buf = allocBuffer(1024, '.')
       request(createServer({ limit: '1kb' }))
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .set('Content-Length', '1034')
-      .send(JSON.stringify({ str: buf.toString() }))
+      .send(jsan.stringify({ str: buf.toString() }))
       .expect(413, done)
     })
 
@@ -142,7 +164,7 @@ describe('bodyParser.json()', function () {
       var buf = allocBuffer(1024, '.')
       var server = createServer({ limit: '1kb' })
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.set('Transfer-Encoding', 'chunked')
       test.write('{"str":')
       test.write('"' + buf.toString() + '"}')
@@ -153,8 +175,8 @@ describe('bodyParser.json()', function () {
       var buf = allocBuffer(1024, '.')
       request(createServer({ limit: 1024 }))
       .post('/')
-      .set('Content-Type', 'application/json')
-      .send(JSON.stringify({ str: buf.toString() }))
+      .set('Content-Type', 'application/jsan')
+      .send(jsan.stringify({ str: buf.toString() }))
       .expect(413, done)
     })
 
@@ -167,8 +189,8 @@ describe('bodyParser.json()', function () {
 
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
-      .send(JSON.stringify({ str: buf.toString() }))
+      .set('Content-Type', 'application/jsan')
+      .send(jsan.stringify({ str: buf.toString() }))
       .expect(413, done)
     })
 
@@ -176,7 +198,7 @@ describe('bodyParser.json()', function () {
       var buf = allocBuffer(10240, '.')
       var server = createServer({ limit: '8kb' })
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(buf)
       test.write(buf)
       test.write(buf)
@@ -194,7 +216,7 @@ describe('bodyParser.json()', function () {
       it('should not accept content-encoding', function (done) {
         var test = request(server).post('/')
         test.set('Content-Encoding', 'gzip')
-        test.set('Content-Type', 'application/json')
+        test.set('Content-Type', 'application/jsan')
         test.write(new Buffer('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
         test.expect(415, 'content encoding unsupported', done)
       })
@@ -209,7 +231,7 @@ describe('bodyParser.json()', function () {
       it('should accept content-encoding', function (done) {
         var test = request(server).post('/')
         test.set('Content-Encoding', 'gzip')
-        test.set('Content-Type', 'application/json')
+        test.set('Content-Type', 'application/jsan')
         test.write(new Buffer('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
         test.expect(200, '{"name":"论"}', done)
       })
@@ -217,16 +239,16 @@ describe('bodyParser.json()', function () {
   })
 
   describe('with type option', function () {
-    describe('when "application/vnd.api+json"', function () {
+    describe('when "application/vnd.api+jsan"', function () {
       var server
       before(function () {
-        server = createServer({ type: 'application/vnd.api+json' })
+        server = createServer({ type: 'application/vnd.api+jsan' })
       })
 
-      it('should parse JSON for custom type', function (done) {
+      it('should parse jsan for custom type', function (done) {
         request(server)
         .post('/')
-        .set('Content-Type', 'application/vnd.api+json')
+        .set('Content-Type', 'application/vnd.api+jsan')
         .send('{"user":"tobi"}')
         .expect(200, '{"user":"tobi"}', done)
       })
@@ -234,7 +256,7 @@ describe('bodyParser.json()', function () {
       it('should ignore standard type', function (done) {
         request(server)
         .post('/')
-        .set('Content-Type', 'application/json')
+        .set('Content-Type', 'application/jsan')
         .send('{"user":"tobi"}')
         .expect(200, '{}', done)
       })
@@ -245,12 +267,12 @@ describe('bodyParser.json()', function () {
         var server = createServer({ type: accept })
 
         function accept (req) {
-          return req.headers['content-type'] === 'application/vnd.api+json'
+          return req.headers['content-type'] === 'application/vnd.api+jsan'
         }
 
         request(server)
         .post('/')
-        .set('Content-Type', 'application/vnd.api+json')
+        .set('Content-Type', 'application/vnd.api+jsan')
         .send('{"user":"tobi"}')
         .expect(200, '{"user":"tobi"}', done)
       })
@@ -294,7 +316,7 @@ describe('bodyParser.json()', function () {
 
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('["tobi"]')
       .expect(403, 'no arrays', done)
     })
@@ -309,7 +331,7 @@ describe('bodyParser.json()', function () {
 
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('["tobi"]')
       .expect(400, 'no arrays', done)
     })
@@ -321,7 +343,7 @@ describe('bodyParser.json()', function () {
 
       request(server)
       .post('/')
-      .set('Content-Type', 'application/json')
+      .set('Content-Type', 'application/jsan')
       .send('{"user":"tobi"}')
       .expect(200, '{"user":"tobi"}', done)
     })
@@ -332,7 +354,7 @@ describe('bodyParser.json()', function () {
       }})
 
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=utf-16')
+      test.set('Content-Type', 'application/jsan; charset=utf-16')
       test.write(new Buffer('feff007b0022006e0061006d00650022003a00228bba0022007d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -343,7 +365,7 @@ describe('bodyParser.json()', function () {
       }})
 
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=x-bogus')
+      test.set('Content-Type', 'application/jsan; charset=x-bogus')
       test.write(new Buffer('00000000', 'hex'))
       test.expect(415, 'unsupported charset "X-BOGUS"', done)
     })
@@ -357,21 +379,21 @@ describe('bodyParser.json()', function () {
 
     it('should parse utf-8', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=utf-8')
+      test.set('Content-Type', 'application/jsan; charset=utf-8')
       test.write(new Buffer('7b226e616d65223a22e8aeba227d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
 
     it('should parse utf-16', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=utf-16')
+      test.set('Content-Type', 'application/jsan; charset=utf-16')
       test.write(new Buffer('feff007b0022006e0061006d00650022003a00228bba0022007d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
 
     it('should parse when content-length != char length', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=utf-8')
+      test.set('Content-Type', 'application/jsan; charset=utf-8')
       test.set('Content-Length', '13')
       test.write(new Buffer('7b2274657374223a22c3a5227d', 'hex'))
       test.expect(200, '{"test":"å"}', done)
@@ -379,14 +401,14 @@ describe('bodyParser.json()', function () {
 
     it('should default to utf-8', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('7b226e616d65223a22e8aeba227d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
 
     it('should fail on unknown charset', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json; charset=koi8-r')
+      test.set('Content-Type', 'application/jsan; charset=koi8-r')
       test.write(new Buffer('7b226e616d65223a22cec5d4227d', 'hex'))
       test.expect(415, 'unsupported charset "KOI8-R"', done)
     })
@@ -400,7 +422,7 @@ describe('bodyParser.json()', function () {
 
     it('should parse without encoding', function (done) {
       var test = request(server).post('/')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('7b226e616d65223a22e8aeba227d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -408,7 +430,7 @@ describe('bodyParser.json()', function () {
     it('should support identity encoding', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'identity')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('7b226e616d65223a22e8aeba227d', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -416,7 +438,7 @@ describe('bodyParser.json()', function () {
     it('should support gzip encoding', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'gzip')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -424,7 +446,7 @@ describe('bodyParser.json()', function () {
     it('should support deflate encoding', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'deflate')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('789cab56ca4bcc4d55b2527ab16e97522d00274505ac', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -432,7 +454,7 @@ describe('bodyParser.json()', function () {
     it('should be case-insensitive', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'GZIP')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
       test.expect(200, '{"name":"论"}', done)
     })
@@ -440,7 +462,7 @@ describe('bodyParser.json()', function () {
     it('should 415 on unknown encoding', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'nulls')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('000000000000', 'hex'))
       test.expect(415, 'unsupported content encoding "nulls"', done)
     })
@@ -448,7 +470,7 @@ describe('bodyParser.json()', function () {
     it('should 400 on malformed encoding', function (done) {
       var test = request(server).post('/')
       test.set('Content-Encoding', 'gzip')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('1f8b080000000000000bab56cc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
       test.expect(400, done)
     })
@@ -457,7 +479,7 @@ describe('bodyParser.json()', function () {
       // gzip'd data exceeds 1kb, but deflated below 1kb
       var test = request(server).post('/')
       test.set('Content-Encoding', 'gzip')
-      test.set('Content-Type', 'application/json')
+      test.set('Content-Type', 'application/jsan')
       test.write(new Buffer('1f8b080000000000000bedc1010d000000c2a0f74f6d0f071400000000000000', 'hex'))
       test.write(new Buffer('0000000000000000000000000000000000000000000000000000000000000000', 'hex'))
       test.write(new Buffer('0000000000000000004f0625b3b71650c30000', 'hex'))
@@ -478,13 +500,13 @@ function allocBuffer (size, fill) {
 
 function createServer (opts) {
   var _bodyParser = typeof opts !== 'function'
-    ? bodyParser.json(opts)
+    ? jsanBodyParser(opts)
     : opts
 
   return http.createServer(function (req, res) {
     _bodyParser(req, res, function (err) {
       res.statusCode = err ? (err.status || 500) : 200
-      res.end(err ? err.message : JSON.stringify(req.body))
+      res.end(err ? err.message : jsan.stringify(req.body))
     })
   })
 }
